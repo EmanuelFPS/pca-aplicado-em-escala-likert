@@ -1,0 +1,108 @@
+---
+title: "Projeto - Análise de Componentes Principais"
+author: "Emanuel Franklin Passos Simões"
+format: pdf
+editor: visual
+toc: true
+toc-title: Sumário
+---
+
+## 1. Introdução
+
+O projeto é composto por uma base de dados que contém 18 variáveis na escala Likert de 5 pontos e 201 respostas (mais informações em [professortp](https://www.professortp.com.br/est014/projeto/acp/acp.html)). Ele consiste em uma pesquisa sobre "necessidade de cognição" de cada sujeito, e os objetivos são responder as seguintes perguntas:
+
+1.  Analise os dados para a necessidade de cognição usando componentes principais. Quanta variância é explicada pelo primeiro componente? Sua análise sugere que um único componente realiza um trabalho adequado de captação da necessidade de cognição? Justifique.
+
+2.  Os pesquisadores, em geral, formam a escala de cognição, adicionando os escores dos itens (itens de códigos reversos são subtraídos). Como essa medida se compara com o primeiro componente principal da análise no item \`\`a”? Qual você usaria e por quê?
+
+Para cumprir os objetivos, será preciso:
+
+1.  Importar e tratar os dados (transformar todos em numéricos e tratar missing values);
+
+2.  Realizar análise de componentes principais.
+
+## 2. Carregando bibliotecas
+
+```{r}
+if (!requireNamespace('pacman', quietly = TRUE)) {
+  install.packages('pacman')
+}
+
+pacman::p_load(tidyverse, GGally, ggcorrplot, pheatmap, factoextra, MatchIt, psych)
+```
+
+## 3. Importando base de dados
+
+```{r}
+url <- 'https://www.professortp.com.br/est014/dados/COGNITION.txt'
+
+dados <- read.table(url, row.names = 1, header = TRUE)
+head(dados)
+```
+
+## 4. Tratamento dos dados
+
+```{r}
+str(dados)
+```
+
+Observa-se que algumas variáveis estão definidas como **chr** e não **int**. É preciso fazer essa transformação para prosseguir na análise, já que não é possível fazer cálculos com variáveis **chr**.
+
+```{r}
+dados <- dados %>%
+  mutate(across(everything(), as.integer))
+```
+
+```{r}
+str(dados)
+```
+
+Agora, será verificado a presença de missing values.
+
+```{r}
+sum(is.na(dados))
+```
+
+Como há missing values, optou-se por imputar pela mediana, pois é menos pior do que imputar pela média ou moda.
+
+```{r}
+for (j in names(dados)) {
+  coluna <- dados[[j]]
+  med <- median(coluna, na.rm = TRUE)
+  coluna[is.na(coluna)] <- med
+  dados[[j]] <- coluna
+}
+```
+
+```{r}
+sum(is.na(dados))
+```
+
+## 5. Questão 1
+
+Optou-se por fazer a análise utilizando matriz de covariancias, já que os dados estão na mesma escala.
+
+```{r}
+acp = prcomp(dados)
+summary(acp)
+```
+
+Os dados acima apresentam o desvio padrão de cada componente principal, a proporção da variância explicada e a proporção acumulada, respectivamente.
+
+Conforme perguntado na questão 1, observa-se que a variância explicada pelo primeiro componente é 31,22%.
+
+Para verificar se um único componente realiza um trabalho adequado de captação da necessidade de cognição, será feito o Scree Plot:
+
+```{r}
+fa.parallel(dados, fa = "pc", n.iter = 1000)
+```
+
+Observa-se que um único componente realiza um trabalho adequado, visto que o primeiro componente está muito acima dos autovalores aleatórios (limite rígido), enquanto o segundo componente não falha, mas também não é tão informativo.
+
+## 6. Questão 2
+
+Enquanto a escala de cognição citada soma ou subtrai as respostas das perguntas, o método das componentes principais atribui pesos aos escores com base na correlação global entre as variáveis.
+
+-   Exemplo: Se uma pessoa marcou 4 na **C1**, soma 4 no índice.
+
+Como ambas funcionam e a escala de cognição citada parece mais simples, eu usaria a soma simples.
